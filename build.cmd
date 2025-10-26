@@ -1,0 +1,1 @@
+esbuild .\main.ts --bundle --external:tjs:* --external:tjs --target=es2024 --format=esm --outfile=dist.js

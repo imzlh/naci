@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务管理面板</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-sidebar: #fff8f8;
+            --bg-sidebar-dark: #34495e;
+            --text-primary: #2c3e50;
+            --text-secondary: #6c757d;
+            --text-sidebar: #343131;
+            --border-color: #dee2e6;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --card-bg: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-sidebar: #0d1117;
+            --bg-sidebar-dark: #161b22;
+            --text-primary: #e6e6e6;
+            --text-secondary: #9ca3af;
+            --text-sidebar: #c9d1d9;
+            --border-color: #30363d;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --card-bg: #2d2d2d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .main-layout {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: var(--bg-sidebar);
+            color: var(--text-sidebar);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px var(--shadow);
+            position: relative;
+            transition: transform 0.3s ease, background-color 0.3s;
+        }
+
+        .sidebar-resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            cursor: col-resize;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .sidebar-resizer:hover {
+            background: rgba(52, 152, 219, 0.5);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgb(236, 236, 236);
+        }
+
+        .sidebar-header h4 {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header small {
+            opacity: 0.7;
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 0;
+        }
+
+        .menu-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-item.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-left-color: #3498db;
+        }
+
+        .menu-item-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .menu-item-info span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .menu-item i {
+            width: 30px;
+            flex-shrink: 0;
+        }
+
+        .state-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .state-dot.running {
+            background: #2ecc71;
+        }
+
+        .state-dot.stopped {
+            background: #e74c3c;
+        }
+
+        .state-dot.stopping {
+            background: #e67e22;
+        }
+
+        .state-dot.initialized {
+            background: #3498db;
+        }
+
+        .state-dot.uninitialized {
+            background: #95a5a6;
+        }
+
+        .sidebar-footer {
+            padding: 15px 20px;
+            border-top: 1px solid rgb(236, 236, 236);
+        }
+
+        .btn-create {
+            width: 100%;
+            background: #3498db;
+            border: none;
+            padding: 10px;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-create:hover {
+            background: #2980b9;
+        }
+
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1001;
+            background: #3498db;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .content-header {
+            background: var(--card-bg);
+            padding: 15px 30px;
+            box-shadow: 0 2px 5px var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background-color 0.3s;
+        }
+
+        .content-header h2 {
+            font-size: 1.5rem;
+            margin: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-secondary);
+        }
+
+        .content-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px 30px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .info-card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .info-card-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .info-card-value {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .section {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detail-table {
+            width: 100%;
+            font-size: 0.9rem;
+        }
+
+        .detail-table td {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-table td:first-child {
+            color: var(--text-secondary);
+            width: 140px;
+        }
+
+        .detail-table td:last-child {
+            font-weight: 500;
+            word-break: break-all;
+            color: var(--text-primary);
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .action-btn i {
+            margin-right: 5px;
+        }
+
+        .btn-start {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            background: #27ae60;
+        }
+
+        .btn-stop {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: #c0392b;
+        }
+
+        .btn-restart {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-restart:hover:not(:disabled) {
+            background: #d68910;
+        }
+
+        .btn-reload {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-reload:hover:not(:disabled) {
+            background: #2980b9;
+        }
+
+        .btn-delete {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-delete:hover:not(:disabled) {
+            background: #7f8c8d;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-body {
+            background: var(--card-bg);
+        }
+
+        .form-control,
+        .form-select {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: #3498db;
+        }
+
+        .form-label {
+            color: var(--text-primary);
+        }
+
+        .code-editor {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            min-height: 300px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .badge-state {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-running {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-stopped {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-stopping {
+            background: #ffe5cc;
+            color: #8a4000;
+        }
+
+        .badge-initialized {
+            background: #cfe2ff;
+            color: #084298;
+        }
+
+        .badge-uninitialized {
+            background: #e2e3e5;
+            color: #41464b;
+        }
+
+        .log-section {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            max-height: 500px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        [data-theme="dark"] .log-section {
+            background: #0d1117;
+            border: 1px solid var(--border-color);
+        }
+
+        .log-line {
+            margin: 2px 0;
+            padding: 2px 0;
+            line-height: 1.4;
+        }
+
+        .log-line.error {
+            color: #f48771;
+        }
+
+        .log-line.warn {
+            color: #dcdcaa;
+        }
+
+        .log-line.info {
+            color: #4fc1ff;
+        }
+
+        .log-placeholder {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .log-controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .log-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+        }
+
+        .log-status.connected {
+            color: #2ecc71;
+        }
+
+        .log-status.disconnected {
+            color: #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                z-index: 1000;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+
+            .content-header {
+                padding-left: 70px;
+            }
+
+            .info-grid {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            }
+
+            .content-body {
+                padding: 15px;
+            }
+
+            .action-btn {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <button class="mobile-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <div class="main-layout">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-resizer" id="resizer"></div>
+            <div class="sidebar-header">
+                <h4><i class="fas fa-server"></i> 服务管理</h4>
+                <small>Application Manager</small>
+            </div>
+            <div class="sidebar-menu" id="appMenu"></div>
+            <div class="sidebar-footer">
+                <button class="btn-create" onclick="showCreateModal()">
+                    <i class="fas fa-plus"></i> 创建/更新
+                </button>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <div class="content-header">
+                <h2 id="contentTitle">应用概览</h2>
+                <div class="header-actions">
+                    <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="loadApps()">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
+            </div>
+            <div class="content-body" id="contentBody"></div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="appModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-code"></i> 创建应用</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="appForm">
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">应用名称 *</label>
+                                <input type="text" class="form-control" id="appName" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">版本 *</label>
+                                <input type="text" class="form-control" id="appVersion" required value="1.0.0">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">描述 *</label>
+                            <textarea class="form-control" id="appDescription" rows="2" required></textarea>
+                        </div>
+                        <div class="mb-3" id="formCodeSpace">
+                            <label class="form-label">
+                                <span>代码 *</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mx-3"
+                                    onclick="fileUpload()">
+                                    <i class="fas fa-plus"></i> 上传文件
+                                </button>
+                            </label>
+                            <textarea class="form-control code-editor" id="appCode" required></textarea>
+                        </div>
+                        <div id="customFieldsContainer"></div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addCustomField()">
+                            <i class="fas fa-plus"></i> 添加自定义参数
+                        </button>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveApp()">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+    let appModal;
+    let currentApp = null;
+    let apps = [];
+    let logEventSource = null;
+    let statEventSource = null;
+    let customFieldCount = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            appModal = new bootstrap.Modal(document.getElementById('appModal'));
+            initTheme();
+            initResizer();
+            loadApps();
+            // 使用 SSE 获取选中应用的实时状态，替代轮询
+            // 通过 showAppDetail 建立对应应用的 stat SSE 连接
+        });
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('themeIcon');
+            icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+
+        function initResizer() {
+            const resizer = document.getElementById('resizer');
+            const sidebar = document.getElementById('sidebar');
+            let isResizing = false;
+
+            resizer.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                const newWidth = e.clientX;
+                if (newWidth >= 200 && newWidth <= 500) {
+                    sidebar.style.width = newWidth + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            });
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+        }
+
+        async function loadApps() {
+            try {
+                const response = await fetch('/@api/list');
+                apps = await response.json();
+                renderMenu();
+
+                if (currentApp && apps.find(a => a.name === currentApp)) {
+                    showAppDetail(currentApp);
+                } else if (apps.length > 0) {
+                    showAppDetail(apps[0].name);
+                } else {
+                    showEmptyState();
+                }
+            } catch (error) {
+                console.error('加载失败:', error);
+            }
+        }
+
+        // 使用 SSE 连接获取应用的实时状态，替代轮询
+        function connectStats(name) {
+            disconnectStats();
+
+            try {
+                statEventSource = new EventSource(`/@api/stat/${name}`);
+
+                statEventSource.onopen = () => {
+                    // console.log('stat SSE opened for', name);
+                };
+
+                statEventSource.onmessage = (event) => {
+                    try {
+                        const app = JSON.parse(event.data);
+
+                        // 更新当前页面的统计信息（如果是正在查看的应用）
+                        if (app && app.name === currentApp) {
+                            updateAppStats(app);
+                            // 如果需要，也更新详情页中的状态栏
+                            const badge = document.querySelector('.badge-state');
+                            if (badge) {
+                                badge.textContent = app.state;
+                                badge.className = 'badge-state badge-' + app.state.toLowerCase();
+                            }
+                        }
+
+                        // 更新侧边栏 apps 列表状态并重新渲染
+                        apps = apps.map(a => a.name === app.name ? Object.assign({}, a, { state: app.state }) : a);
+                        renderMenu();
+                    } catch (err) {
+                        console.error('解析 stat SSE 数据失败:', err);
+                    }
+                };
+
+                statEventSource.onerror = (err) => {
+                    console.error('stat SSE 错误:', err);
+                    // 发生错误时关闭连接，待用户或服务器端重新建立
+                    disconnectStats();
+                };
+            } catch (err) {
+                console.error('连接 stat SSE 失败:', err);
+            }
+        }
+
+        function disconnectStats() {
+            if (statEventSource) {
+                try {
+                    statEventSource.close();
+                } catch (e) {
+                    // ignore
+                }
+                statEventSource = null;
+            }
+        }
+
+        function renderMenu() {
+            const menu = document.getElementById('appMenu');
+            if (apps.length === 0) {
+                menu.innerHTML = '<div style="padding: 20px; text-align: center; opacity: 0.5;">暂无应用</div>';
+                return;
+            }
+
+            menu.innerHTML = apps.map(app => `
+                <div class="menu-item ${currentApp === app.name ? 'active' : ''}" onclick="showAppDetail('${app.name}')">
+                    <div class="menu-item-info">
+                        <i class="fas fa-cube"></i>
+                        <span>${app.name}</span>
+                    </div>
+                    <span class="state-dot ${app.state.toLowerCase()}"></span>
+                </div>
+            `).join('');
+        }
+
+        function showEmptyState() {
+            document.getElementById('contentTitle').textContent = '应用概览';
+            document.getElementById('contentBody').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <h4>暂无应用</h4>
+                    <p>点击左下角按钮创建您的第一个应用</p>
+                </div>
+            `;
+        }
+
+        async function showAppDetail(name) {
+            currentApp = name;
+            renderMenu();
+            disconnectLogs();
+            // 切换应用时断开旧的 stat 连接并建立新的 stat SSE
+            disconnectStats();
+
+            try {
+                const response = await fetch(`/@api/stat/${name}`);
+                const app = await response.json();
+
+                document.getElementById('contentTitle').textContent = app.name;
+
+                renderAppDetail(app);
+
+                // 使用 SSE 实时接收该应用的状态更新
+                connectStats(name);
+            } catch (error) {
+                console.error('获取详情失败:', error);
+            }
+        }
+
+        function renderAppDetail(app) {
+            const stats = app.stats || {};
+            const info = app.info || {};
+            const stateClass = `badge-${app.state.toLowerCase()}`;
+
+            const customFields = Object.entries(info)
+                .filter(([key]) => !['name', 'version', 'description', 'timestamp'].includes(key))
+                .map(([key, value]) => `<tr><td>${key}</td><td>${value}</td></tr>`)
+                .join('');
+
+            document.getElementById('contentBody').innerHTML = `
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-card-label">状态</div>
+                        <div class="info-card-value">
+                            <span class="badge-state ${stateClass}">${app.state}</span>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-label">运行时间</div>
+                        <div class="info-card-value" id="uptimeValue">${formatUptime(stats.uptime || 0)}</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-label">重启次数</div>
+                        <div class="info-card-value" id="restartValue">${stats.restartCount || 0}</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-label">版本</div>
+                        <div class="info-card-value">${info.version || '-'}</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">操作</div>
+                    <button class="action-btn btn-start" onclick="controlApp('${app.name}', 'START')" ${app.state === 'RUNNING' ? 'disabled' : ''}>
+                        <i class="fas fa-play"></i>启动
+                    </button>
+                    <button class="action-btn btn-stop" onclick="controlApp('${app.name}', 'STOP')" ${app.state === 'STOPPED' ? 'disabled' : ''}>
+                        <i class="fas fa-stop"></i>停止
+                    </button>
+                    <button class="action-btn btn-restart" onclick="controlApp('${app.name}', 'RESTART')" ${app.state === 'STOPPED' || app.state === 'UNINITIALIZED' ? 'disabled' : ''}>
+                        <i class="fas fa-redo"></i>重启
+                    </button>
+                    <button class="action-btn btn-reload" onclick="controlApp('${app.name}', 'RELOAD')">
+                        <i class="fas fa-sync"></i>重载
+                    </button>
+                    <button class="action-btn btn-delete" onclick="deleteApp('${app.name}')">
+                        <i class="fas fa-trash"></i>删除
+                    </button>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">基本信息</div>
+                    <table class="detail-table">
+                        <tr><td>应用名称</td><td>${app.name}</td></tr>
+                        <tr><td>版本</td><td>${info.version || '-'}</td></tr>
+                        <tr><td>描述</td><td>${info.description || '-'}</td></tr>
+                        <tr><td>创建时间</td><td>${info.timestamp ? new Date(info.timestamp).toLocaleString() : '-'}</td></tr>
+                        ${customFields}
+                    </table>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">运行统计</div>
+                    <table class="detail-table">
+                        <tr><td>启动时间</td><td>${stats.startTime ? new Date(stats.startTime).toLocaleString() : '-'}</td></tr>
+                        <tr><td>停止时间</td><td>${stats.stopTime ? new Date(stats.stopTime).toLocaleString() : '-'}</td></tr>
+                        <tr><td>运行时长</td><td id="uptimeValue2">${formatUptime(stats.uptime || 0)}</td></tr>
+                        <tr><td>重启次数</td><td id="restartValue2">${stats.restartCount || 0}</td></tr>
+                        <tr><td>最后错误</td><td style="color: ${stats.lastError ? '#e74c3c' : 'inherit'}">${stats.lastError || '无'}</td></tr>
+                    </table>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">
+                        <span>实时日志</span>
+                        <div class="log-controls">
+                            <span class="log-status disconnected" id="logStatus">
+                                <i class="fas fa-circle"></i> 未连接
+                            </span>
+                            <button class="btn btn-sm btn-outline-primary" onclick="toggleLogs('${app.name}')" id="logToggleBtn">
+                                <i class="fas fa-play"></i> 连接
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="clearLogs()">
+                                <i class="fas fa-trash"></i> 清空
+                            </button>
+                        </div>
+                    </div>
+                    <div class="log-section" id="logContainer">
+                        <div class="log-placeholder">点击"连接"按钮开始接收日志</div>
+                    </div>
+                </div>
+            `;
+            Promise.resolve().then(() => connectLogs(app.name));
+        }
+
+        function updateAppStats(app) {
+            const stats = app.stats || {};
+            const uptimeEls = [document.getElementById('uptimeValue'), document.getElementById('uptimeValue2')];
+            const restartEls = [document.getElementById('restartValue'), document.getElementById('restartValue2')];
+
+            uptimeEls.forEach(el => {
+                if (el) el.textContent = formatUptime(stats.uptime || 0);
+            });
+
+            restartEls.forEach(el => {
+                if (el) el.textContent = stats.restartCount || 0;
+            });
+        }
+
+        async function controlApp(name, action) {
+            try {
+                const response = await fetch(`/@api/control/${name}`, {
+                    method: 'POST',
+                    body: action
+                });
+
+                if (response.ok) {
+                    setTimeout(() => {
+                        loadApps();
+                    }, 500);
+                } else {
+                    const error = await response.json();
+                    alert('操作失败: ' + error.error);
+                }
+            } catch (error) {
+                alert('操作失败: ' + error.message);
+            } finally {
+                renderAppDetail(name);
+            }
+        }
+
+        function parseAndFillMetadata(code) {
+            const metadata = parseJsMetadata(code);
+
+            // 填充基本信息
+            if (metadata.name) {
+                document.getElementById('appName').value = metadata.name;
+            }
+            if (metadata.version) {
+                document.getElementById('appVersion').value = metadata.version;
+            }
+            if (metadata.description) {
+                document.getElementById('appDescription').value = metadata.description;
+            }
+
+            // 填充代码内容（去掉注释部分）
+            const codeWithoutComments = code.replace(/\/\*\*[\s\S]*?\*\//, '').trim();
+            document.getElementById('appCode').value = codeWithoutComments;
+
+            // 清空现有参数并填充新参数
+            const container = document.getElementById('customFieldsContainer');
+            container.innerHTML = '';
+            customFieldCount = 0;
+
+            if (metadata.arguments && metadata.arguments.length > 0) {
+                metadata.arguments.forEach(arg => {
+                    addCustomField(); // 添加新的参数行
+                    const lastId = customFieldCount - 1;
+                    document.getElementById(`customKey${lastId}`).value = arg.name;
+                    document.getElementById(`customValue${lastId}`).value = arg.description;
+                });
+            }
+        }
+
+        function parseJsMetadata(code) {
+            // 匹配JSDoc风格的注释块
+            const commentBlockRegex = /\/\*\*([\s\S]*?)\*\//;
+            const match = code.match(commentBlockRegex);
+            if (!match) return {};
+
+            const commentBlock = match[1];
+            const metadata = {};
+
+            // 解析各标签
+            const tagRegex = /@(\w+)\s+(.*)/g;
+            let tagMatch;
+
+            while ((tagMatch = tagRegex.exec(commentBlock)) !== null) {
+                const tagName = tagMatch[1];
+                const tagValue = tagMatch[2].trim();
+
+                // 处理参数标签
+                if (tagName === 'argument') {
+                    if (!metadata.arguments) {
+                        metadata.arguments = [];
+                    }
+                    // 解析参数名和描述
+                    const argParts = tagValue.split(/\s+/);
+                    const argName = argParts[0];
+                    const argDesc = argParts.slice(1).join(' ') || '';
+                    metadata.arguments.push({
+                        name: argName,
+                        description: argDesc
+                    });
+                } else {
+                    // 其他标签直接存储
+                    metadata[tagName] = tagValue;
+                }
+            }
+
+            return metadata;
+        }
+
+        // 文件上传函数
+        function fileUpload() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.js,.txt,.json,.py,.sh,.bat';
+
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    const content = await readFileAsText(file);
+                    parseAndFillMetadata(content); // 使用新函数处理上传的文件
+                } catch (error) {
+                    alert('读取文件失败: ' + error.message);
+                }
+            };
+
+            fileInput.click();
+        }
+
+        // 辅助函数：将文件读取为文本
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(new Error('文件读取失败'));
+                reader.readAsText(file);
+            });
+        }
+
+        // 拖拽函数
+        function dragToGetCode(element) {
+            element.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                element.style.border = '2px dashed #3498db';
+                element.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+            });
+
+            element.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                resetDragStyle(element);
+            });
+
+            element.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                resetDragStyle(element);
+
+                const file = e.dataTransfer.files[0];
+                if (!file) return;
+
+                const validTypes = ['text/', 'application/json', 'application/javascript'];
+                if (!validTypes.some(type => file.type.includes(type))) {
+                    alert('请上传文本文件或代码文件');
+                    return;
+                }
+
+                try {
+                    const content = await readFileAsText(file);
+                    parseAndFillMetadata(content); // 使用新函数处理拖拽的文件
+                } catch (error) {
+                    alert('读取文件失败: ' + error.message);
+                }
+            });
+        }
+
+        // 重置拖拽区域的样式
+        function resetDragStyle(element) {
+            element.style.border = '';
+            element.style.backgroundColor = '';
+        }
+
+
+        function showCreateModal() {
+            document.getElementById('appForm').reset();
+            document.getElementById('appVersion').value = '1.0.0';
+            document.getElementById('customFieldsContainer').innerHTML = '';
+            dragToGetCode(document.getElementById('formCodeSpace'))
+            customFieldCount = 0;
+            appModal.show();
+        }
+
+        function addCustomField() {
+            const container = document.getElementById('customFieldsContainer');
+            const id = customFieldCount++;
+            const fieldHtml = `
+                <div class="row mb-2" id="customField${id}">
+                    <div class="col-5">
+                        <input type="text" class="form-control form-control-sm" placeholder="参数名" id="customKey${id}">
+                    </div>
+                    <div class="col-5">
+                        <input type="text" class="form-control form-control-sm" placeholder="参数值" id="customValue${id}">
+                    </div>
+                    <div class="col-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeCustomField(${id})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', fieldHtml);
+        }
+
+        function removeCustomField(id) {
+            const field = document.getElementById(`customField${id}`);
+            if (field) field.remove();
+        }
+
+        async function saveApp() {
+            const name = document.getElementById('appName').value.trim();
+            const version = document.getElementById('appVersion').value.trim();
+            const description = document.getElementById('appDescription').value.trim();
+            const code = document.getElementById('appCode').value;
+
+            if (!name || !version || !description || !code) {
+                alert('请填写所有必填字段');
+                return;
+            }
+
+            const info = {
+                name,
+                version,
+                description,
+                $code: code
+            };
+
+            for (let i = 0; i < customFieldCount; i++) {
+                const keyEl = document.getElementById(`customKey${i}`);
+                const valueEl = document.getElementById(`customValue${i}`);
+                if (keyEl && valueEl) {
+                    const key = keyEl.value.trim();
+                    const value = valueEl.value.trim();
+                    if (key && value) {
+                        info[key] = value;
+                    }
+                }
+            }
+
+            try {
+                const response = await fetch(`/@api/control/${name}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(info)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    appModal.hide();
+                    await loadApps();
+                    showAppDetail(name);
+                    alert('保存成功！');
+                } else {
+                    alert('保存失败: ' + result.error);
+                }
+            } catch (error) {
+                alert('保存失败: ' + error.message);
+            }
+        }
+
+        async function deleteApp(name) {
+            if (!confirm(`确定要删除应用 "${name}" 吗？此操作不可恢复。`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/@api/control/${name}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    disconnectLogs();
+                    disconnectStats();
+                    currentApp = null;
+                    await loadApps();
+                    alert('删除成功！');
+                } else {
+                    const error = await response.json();
+                    alert('删除失败: ' + error.error);
+                }
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        function toggleLogs(name) {
+            if (logEventSource) {
+                disconnectLogs();
+            } else {
+                connectLogs(name);
+            }
+        }
+
+        function connectLogs(name) {
+            const logContainer = document.getElementById('logContainer');
+            const logStatus = document.getElementById('logStatus');
+            const logToggleBtn = document.getElementById('logToggleBtn');
+
+            logContainer.innerHTML = '';
+
+            try {
+                let first = true;
+                logEventSource = new EventSource(`/@api/logs/${name}`);
+
+                logEventSource.onopen = () => {
+                    logStatus.className = 'log-status connected';
+                    logStatus.innerHTML = '<i class="fas fa-circle"></i> 已连接';
+                    logToggleBtn.innerHTML = '<i class="fas fa-stop"></i> 断开';
+                };
+
+                function process(data){
+                    if (data && data.html) {
+                            const wrapper = document.createElement('div');
+                            wrapper.innerHTML = data.html;
+                            const logLine = document.createElement('div');
+                            logLine.className = 'log-line';
+                            logLine.appendChild(wrapper);
+                            logContainer.appendChild(logLine);
+                        } else {
+                            // 回退：按旧格式处理
+                            const logLine = document.createElement('div');
+                            const timestamp = data && data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+                            const level = (data && data.level) || 'info';
+                            logLine.className = `log-line ${level}`;
+                            logLine.textContent = `[${timestamp}] [${level.toUpperCase()}] ${data && data.message ? data.message : event.data}`;
+                            logContainer.appendChild(logLine);
+                        }
+                }
+
+                logEventSource.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+
+                        if(first){
+                            first = false;
+                            for(const log of data){ // array
+                                process(log);
+                            }
+                        }else{
+                            process(data);
+                        }
+                    } catch (e) {
+                        // 不是 JSON，直接插入纯文本
+                        const logLine = document.createElement('div');
+                        logLine.className = 'log-line';
+                        logLine.textContent = event.data;
+                        logContainer.appendChild(logLine);
+                    }
+
+                    logContainer.scrollTop = logContainer.scrollHeight;
+
+                    if (logContainer.children.length > 1000) {
+                        logContainer.removeChild(logContainer.firstChild);
+                    }
+                };
+
+                logEventSource.onerror = (error) => {
+                    console.error('SSE错误:', error);
+                    disconnectLogs();
+
+                    const errorLine = document.createElement('div');
+                    errorLine.className = 'log-line error';
+                    errorLine.textContent = '[ERROR] 日志连接中断';
+                    logContainer.appendChild(errorLine);
+                };
+            } catch (error) {
+                console.error('连接失败:', error);
+                logContainer.innerHTML = `<div class="log-placeholder">连接失败: ${error.message}</div>`;
+            }
+        }
+
+        function disconnectLogs() {
+            if (logEventSource) {
+                logEventSource.close();
+                logEventSource = null;
+
+                const logStatus = document.getElementById('logStatus');
+                const logToggleBtn = document.getElementById('logToggleBtn');
+
+                if (logStatus) {
+                    logStatus.className = 'log-status disconnected';
+                    logStatus.innerHTML = '<i class="fas fa-circle"></i> 未连接';
+                }
+
+                if (logToggleBtn) {
+                    logToggleBtn.innerHTML = '<i class="fas fa-play"></i> 连接';
+                }
+            }
+        }
+
+        function clearLogs() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '<div class="log-placeholder">日志已清空</div>';
+        }
+
+        function formatUptime(seconds) {
+            if (!seconds) return '0秒';
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+
+            let result = [];
+            if (days > 0) result.push(`${days}天`);
+            if (hours > 0) result.push(`${hours}时`);
+            if (minutes > 0) result.push(`${minutes}分`);
+            if (result.length === 0) result.push(`${Math.floor(seconds)}秒`);
+
+            return result.join(' ');
+        }
+
+        window.addEventListener('beforeunload', () => {
+            disconnectLogs();
+            disconnectStats();
+        });
+    </script>
+</body>
+
+</html>
