@@ -51,7 +51,7 @@ initStatic(router, path.join(tjs.cwd, 'public'));
 HandlerClass.router = router;
 
 // 3. start server
-const PORT = 8080;
+const PORT = 5000;
 const HOST = '0.0.0.0';
 const server = await Server.create(HOST, PORT, HandlerClass);
 server.run();
